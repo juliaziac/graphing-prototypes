@@ -4,6 +4,7 @@ import pandas as pd
 import io
 import base64
 import plotly.express as px
+import plotly.graph_objects as go
 import os
 
 app = dash.Dash(__name__)
@@ -20,6 +21,7 @@ def load_default_data():
 
 df = load_default_data()
 measurement_options = [{'label': name, 'value': name} for name in set(col.split()[-1] for col in load_default_data().columns if col != 'time')]
+historical_range_options = [{'label': 'Standard Deviation', 'value': 'Standard Deviation'}]
 
 app.layout = html.Div([
     html.H2("Historical Range Calculation Tool", style={'textAlign': 'center'}),
@@ -39,7 +41,14 @@ app.layout = html.Div([
                 value=None,
                 placeholder="Select a Measurement"
             ),
-            html.Div(id='columns-output')
+            html.Div(id='columns-output'),
+            html.H4("Select a Historical Range Calculation"),
+            dcc.Dropdown(
+                id='historical-range-selector',
+                options=historical_range_options,
+                value=None,
+                placeholder="Select a Historical Range Calculation"
+            )
         ], style={'width': '20%', 'padding': '10px'})
     ], style={'display': 'flex', 'flexDirection': 'row'}),
 ])
@@ -47,9 +56,10 @@ app.layout = html.Div([
 @app.callback(
     Output('columns-output', 'children'),
     Output('data-plot', 'figure'),
-    Input('measurement-selector', 'value')
+    Input('measurement-selector', 'value'),
+    Input('historical-range-selector', 'value')
 )
-def update_graph_and_columns(selected_measurement):
+def update_graph_and_columns(selected_measurement, selected_range_calculation):
     if selected_measurement is None:
         return "No selection.", {}
 
@@ -64,6 +74,9 @@ def update_graph_and_columns(selected_measurement):
     melted_df = df[['time'] + matching_columns].melt(id_vars='time', var_name='Run', value_name='Value')
 
     fig = px.scatter(melted_df, x='time', y='Value', color='Run', title=f"{selected_measurement} Trends")
+
+    if selected_range_calculation == "Standard Deviation":
+        fig.add_trace(go.Scatter(x=df['time'], y=df['Run A Titer'], mode='lines', name='Historical Range: Standard Deviation'))
 
     return html.Ul([html.Li(col) for col in matching_columns]), fig
 
